@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('sales_order_items', function (Blueprint $table) {
             $table->id();
+            $table->integer('sales_order_id');
+            $table->string('sku')->index();
+            $table->string('name');
+            $table->integer('qty');
+            $table->decimal('unit_price', 12, 2);
+            $table->decimal('line_total', 12, 2);
             $table->timestamps();
         });
     }

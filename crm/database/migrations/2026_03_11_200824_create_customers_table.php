@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('customers', function (Blueprint $table) {
             $table->id();
+            $table->uuid('external_id')->unique(); // stable ID for sync
+            $table->string('name');
+            $table->string('email')->nullable()->index();
+            $table->string('phone')->nullable();
             $table->timestamps();
         });
     }

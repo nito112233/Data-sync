@@ -13,6 +13,20 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
+            $table->uuid('external_id')->unique(); // stable ID for sync
+            $table->integer('customer_id');
+
+            $table->string('number')->unique();
+            $table->string('status')->default('new');
+            $table->string('currency')->default('EUR');
+            $table->decimal('total', 12, 2)->default(0);
+
+            $table->date('issued_at')->nullable();
+
+            // sync tracking
+            $table->timestamp('synced_at')->nullable();
+            $table->string('erp_reference')->nullable(); // ERP order id/number etc.
+
             $table->timestamps();
         });
     }
