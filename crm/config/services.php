@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'erp' => [
+        'url' => env('ERP_URL'),
+        'integration_key' => env('INTEGRATION_KEY'),
+        'timeout_seconds' => (int) env('ERP_TIMEOUT_SECONDS', 10),
+        'retry_attempts' => (int) env('ERP_RETRY_ATTEMPTS', 3),
+        'retry_backoff_ms' => (int) env('ERP_RETRY_BACKOFF_MS', 500),
+    ],
+
 ];
