@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     protected $fillable = [
-        'external_id','customer_id','number','currency','total','issued_at',
+        'external_id','customer_id','number','status','currency','total','issued_at',
         'synced_at','erp_reference',
     ];
 
@@ -25,5 +25,11 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function outboxMessages()
+    {
+        return $this->hasMany(OutboxMessage::class, 'aggregate_id')
+            ->where('aggregate_type', OutboxMessage::AGGREGATE_TYPE_ORDER);
     }
 }

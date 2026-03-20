@@ -41,6 +41,9 @@ return [
         'timeout_seconds' => (int) env('ERP_TIMEOUT_SECONDS', 10),
         'retry_attempts' => (int) env('ERP_RETRY_ATTEMPTS', 3),
         'retry_backoff_ms' => (int) env('ERP_RETRY_BACKOFF_MS', 500),
+        'outbox_max_attempts' => (int) env('ERP_OUTBOX_MAX_ATTEMPTS', 3),
+        'outbox_retry_delay_seconds' => (int) env('ERP_OUTBOX_RETRY_DELAY_SECONDS', 30),
+        'outbox_queue' => env('ERP_OUTBOX_QUEUE', 'erp-sync'),
     ],
 
 ];

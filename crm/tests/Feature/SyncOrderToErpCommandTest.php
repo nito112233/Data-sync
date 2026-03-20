@@ -31,16 +31,18 @@ class SyncOrderToErpCommandTest extends TestCase
     {
         $order = $this->createOrderWithMessyData();
         $capturedPayload = [];
+        $attemptLog = [];
 
         $this->logStep('START test_it_transforms_payload_and_marks_order_as_synced');
         $this->logOrderSnapshot('CRM source order before sync', $order);
 
-        Http::fake(function (Request $request) use (&$capturedPayload) {
+        Http::fake(function (Request $request) use (&$capturedPayload, &$attemptLog) {
             $capturedPayload = $request->data();
-
-            $this->logStep('ERP fake received transformed payload');
-            $this->logJson('Outgoing ERP payload', $capturedPayload);
-            $this->logStep('ERP fake responds with HTTP 200 and sales_order_id=321');
+            $attemptLog[] = [
+                'attempt' => 1,
+                'result' => 'HTTP 200',
+                'sales_order_id' => 321,
+            ];
 
             return Http::response([
                 'ok' => true,
@@ -53,6 +55,7 @@ class SyncOrderToErpCommandTest extends TestCase
         $order->refresh();
         $order->customer->refresh();
 
+        $this->logErpExchange($capturedPayload, $attemptLog);
         $this->logCommandOutput($output);
         $this->logOrderSnapshot('CRM source order after sync', $order);
 
@@ -86,23 +89,34 @@ class SyncOrderToErpCommandTest extends TestCase
     {
         $order = $this->createOrderWithMessyData();
         $attempts = 0;
+        $capturedPayload = [];
+        $attemptLog = [];
 
         $this->logStep('START test_it_retries_transient_http_failures_and_eventually_succeeds');
         $this->logOrderSnapshot('CRM source order before sync', $order);
 
-        Http::fake(function (Request $request) use (&$attempts) {
+        Http::fake(function (Request $request) use (&$attempts, &$capturedPayload, &$attemptLog) {
             $attempts++;
 
-            $this->logStep("ERP fake received request attempt {$attempts}");
-            $this->logJson("Payload on attempt {$attempts}", $request->data());
+            if ($capturedPayload === []) {
+                $capturedPayload = $request->data();
+            }
 
             if ($attempts === 1) {
-                $this->logStep('ERP fake responds with HTTP 503 -> command should retry');
+                $attemptLog[] = [
+                    'attempt' => $attempts,
+                    'result' => 'HTTP 503',
+                    'message' => 'ERP temporarily unavailable',
+                ];
 
                 return Http::response(['message' => 'ERP temporarily unavailable'], 503);
             }
 
-            $this->logStep('ERP fake responds with HTTP 200 on retry');
+            $attemptLog[] = [
+                'attempt' => $attempts,
+                'result' => 'HTTP 200',
+                'sales_order_id' => 654,
+            ];
 
             return Http::response(['ok' => true, 'sales_order_id' => 654], 200);
         });
@@ -111,6 +125,7 @@ class SyncOrderToErpCommandTest extends TestCase
 
         $order->refresh();
 
+        $this->logErpExchange($capturedPayload, $attemptLog);
         $this->logCommandOutput($output);
         $this->logOrderSnapshot('CRM source order after sync', $order);
 
@@ -125,16 +140,24 @@ class SyncOrderToErpCommandTest extends TestCase
     {
         $order = $this->createOrderWithMessyData();
         $attempts = 0;
+        $capturedPayload = [];
+        $attemptLog = [];
 
         $this->logStep('START test_it_retries_connection_failures_and_leaves_order_unsynced_on_final_failure');
         $this->logOrderSnapshot('CRM source order before sync', $order);
 
-        Http::fake(function (Request $request) use (&$attempts) {
+        Http::fake(function (Request $request) use (&$attempts, &$capturedPayload, &$attemptLog) {
             $attempts++;
 
-            $this->logStep("ERP fake received request attempt {$attempts}");
-            $this->logJson("Payload on attempt {$attempts}", $request->data());
-            $this->logStep('ERP fake throws ConnectionException: ERP offline');
+            if ($capturedPayload === []) {
+                $capturedPayload = $request->data();
+            }
+
+            $attemptLog[] = [
+                'attempt' => $attempts,
+                'result' => 'connection_error',
+                'message' => 'ERP offline',
+            ];
 
             throw new ConnectionException('ERP offline');
         });
@@ -143,6 +166,7 @@ class SyncOrderToErpCommandTest extends TestCase
 
         $order->refresh();
 
+        $this->logErpExchange($capturedPayload, $attemptLog);
         $this->logCommandOutput($output);
         $this->logOrderSnapshot('CRM source order after failed sync', $order);
 
@@ -157,16 +181,21 @@ class SyncOrderToErpCommandTest extends TestCase
     {
         $order = $this->createOrderWithMessyData();
         $attempts = 0;
+        $capturedPayload = [];
+        $attemptLog = [];
 
         $this->logStep('START test_it_does_not_retry_non_retryable_validation_failures');
         $this->logOrderSnapshot('CRM source order before sync', $order);
 
-        Http::fake(function (Request $request) use (&$attempts) {
+        Http::fake(function (Request $request) use (&$attempts, &$capturedPayload, &$attemptLog) {
             $attempts++;
 
-            $this->logStep("ERP fake received request attempt {$attempts}");
-            $this->logJson('Payload rejected by ERP validation', $request->data());
-            $this->logStep('ERP fake responds with HTTP 422 -> command should not retry');
+            $capturedPayload = $request->data();
+            $attemptLog[] = [
+                'attempt' => $attempts,
+                'result' => 'HTTP 422',
+                'message' => 'Validation failed',
+            ];
 
             return Http::response([
                 'message' => 'Validation failed',
@@ -177,6 +206,7 @@ class SyncOrderToErpCommandTest extends TestCase
 
         $order->refresh();
 
+        $this->logErpExchange($capturedPayload, $attemptLog);
         $this->logCommandOutput($output);
         $this->logOrderSnapshot('CRM source order after validation failure', $order);
 
@@ -266,6 +296,12 @@ class SyncOrderToErpCommandTest extends TestCase
     protected function logCommandOutput(string $output): void
     {
         $this->logBlock('Command output', trim($output) !== '' ? trim($output) : '[no command output]');
+    }
+
+    protected function logErpExchange(array $payload, array $attemptLog): void
+    {
+        $this->logJson('ERP payload sent', $payload);
+        $this->logJson('ERP attempt summary', $attemptLog);
     }
 
     protected function logJson(string $label, array $payload): void
