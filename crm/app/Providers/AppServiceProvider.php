@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Jobs\ProcessOutboxMessage;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OutboxMessage;
@@ -25,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Order::saved(function (Order $order): void {
-            if ($order->status !== 'new' || ! $order->items()->exists()) {
+            if ($order->sync_mode !== Order::SYNC_MODE_ASYNC || $order->status !== 'new' || ! $order->items()->exists()) {
                 return;
             }
 
@@ -66,7 +67,15 @@ class AppServiceProvider extends ServiceProvider
         OrderItem::saved(function (OrderItem $item): void {
             $order = $item->order()->first();
 
-            if (! $order || $order->status !== 'new' || ! $order->items()->exists()) {
+            if (! $order) {
+                return;
+            }
+
+            if ($order->sync_mode === Order::SYNC_MODE_BATCH_DEMO && $order->status === 'new') {
+                Order::query()->whereKey($order->id)->update(['updated_at' => now()]);
+            }
+
+            if ($order->sync_mode !== Order::SYNC_MODE_ASYNC || $order->status !== 'new' || ! $order->items()->exists()) {
                 return;
             }
 
@@ -84,6 +93,14 @@ class AppServiceProvider extends ServiceProvider
             ProcessOutboxMessage::dispatch($outboxMessage->id)
                 ->onQueue((string) config('services.erp.outbox_queue', 'erp-sync'))
                 ->afterCommit();
+        });
+
+        Customer::saved(function (Customer $customer): void {
+            Order::query()
+                ->where('customer_id', $customer->id)
+                ->where('sync_mode', Order::SYNC_MODE_BATCH_DEMO)
+                ->where('status', 'new')
+                ->update(['updated_at' => now()]);
         });
     }
 }

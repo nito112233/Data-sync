@@ -44,6 +44,9 @@ return [
         'outbox_max_attempts' => (int) env('ERP_OUTBOX_MAX_ATTEMPTS', 3),
         'outbox_retry_delay_seconds' => (int) env('ERP_OUTBOX_RETRY_DELAY_SECONDS', 30),
         'outbox_queue' => env('ERP_OUTBOX_QUEUE', 'erp-sync'),
+        'batch_pipeline' => env('ERP_BATCH_PIPELINE', 'erp-order-batch-demo'),
+        'batch_max_orders' => (int) env('ERP_BATCH_MAX_ORDERS', 100),
+        'batch_sync_interval_seconds' => (int) env('ERP_BATCH_SYNC_INTERVAL_SECONDS', 3600),
     ],
 
 ];

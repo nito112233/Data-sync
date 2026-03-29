@@ -72,7 +72,28 @@ class ErpOrderSyncService
         ];
     }
 
+    public function buildBatchPayload(iterable $orders): array
+    {
+        $payload = [];
+
+        foreach ($orders as $order) {
+            $payload[] = $this->buildPayload($order);
+        }
+
+        return ['orders' => $payload];
+    }
+
     public function sendPayload(array $payload, array $context = [], ?callable $onRetry = null): Response
+    {
+        return $this->sendJsonRequest('/api/crm/orders', $payload, $context, $onRetry);
+    }
+
+    public function sendBatchPayload(array $payload, array $context = [], ?callable $onRetry = null): Response
+    {
+        return $this->sendJsonRequest('/api/crm/orders/batch', $payload, $context, $onRetry);
+    }
+
+    protected function sendJsonRequest(string $path, array $payload, array $context = [], ?callable $onRetry = null): Response
     {
         $baseUrl = rtrim((string) config('services.erp.url'), '/');
         $integrationKey = (string) config('services.erp.integration_key');
@@ -85,7 +106,7 @@ class ErpOrderSyncService
             throw new ConnectionException('INTEGRATION_KEY is not configured.');
         }
 
-        $url = $baseUrl.'/api/crm/orders';
+        $url = $baseUrl.$path;
         $attempts = max(1, (int) config('services.erp.retry_attempts', 3));
         $backoffMs = max(0, (int) config('services.erp.retry_backoff_ms', 500));
         $timeoutSeconds = max(1, (int) config('services.erp.timeout_seconds', 10));

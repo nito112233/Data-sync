@@ -6,8 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
+    public const SYNC_MODE_ASYNC = 'async';
+    public const SYNC_MODE_BATCH_DEMO = 'batch_demo';
+
     protected $fillable = [
-        'external_id','customer_id','number','status','currency','total','issued_at',
+        'external_id','customer_id','number','status','sync_mode','currency','total','issued_at',
         'synced_at','erp_reference',
     ];
 

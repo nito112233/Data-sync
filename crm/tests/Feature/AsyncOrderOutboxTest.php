@@ -59,6 +59,17 @@ class AsyncOrderOutboxTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_batch_demo_order_does_not_create_outbox_activity(): void
+    {
+        Queue::fake();
+
+        $order = $this->createDraftOrderWithItems(Order::SYNC_MODE_BATCH_DEMO);
+        $order->update(['status' => 'new']);
+
+        $this->assertDatabaseCount('outbox_messages', 0);
+        Queue::assertNothingPushed();
+    }
+
     public function test_status_change_to_new_creates_one_outbox_message_and_dispatches_job(): void
     {
         Queue::fake();
@@ -207,7 +218,7 @@ class AsyncOrderOutboxTest extends TestCase
         Queue::assertPushed(ProcessOutboxMessage::class, 2);
     }
 
-    protected function createDraftOrderWithItems(): Order
+    protected function createDraftOrderWithItems(string $syncMode = Order::SYNC_MODE_ASYNC): Order
     {
         $customer = $this->createCustomer();
 
@@ -216,6 +227,7 @@ class AsyncOrderOutboxTest extends TestCase
             'customer_id' => $customer->id,
             'number' => '  INV-ASYNC-001  ',
             'status' => 'draft',
+            'sync_mode' => $syncMode,
             'currency' => ' eur ',
             'total' => '999.99',
             'issued_at' => '2026-03-17',
