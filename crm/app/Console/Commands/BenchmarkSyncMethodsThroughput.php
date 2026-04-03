@@ -127,6 +127,5 @@ class BenchmarkSyncMethodsThroughput extends Command
             $this->warn("Preflight note: {$eligibleBatchOrders} batch-demo order(s) are already eligible for batch sync.");
         }
 
-        $this->line('For realistic async and batch throughput numbers, keep `php artisan queue:work --queue=erp-sync` and `php artisan schedule:work` running in separate terminals.');
     }
 }
