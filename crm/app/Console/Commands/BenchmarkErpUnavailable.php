@@ -116,6 +116,7 @@ class BenchmarkErpUnavailable extends Command
             $outboxMessage->refresh();
 
             $rows[] = [
+                $outboxMessage->aggregate_id,
                 $run,
                 $jobElapsedMs,
                 $outboxMessage->status,
@@ -139,7 +140,7 @@ class BenchmarkErpUnavailable extends Command
         }
 
         $this->table(
-            ['job_run', 'duration_ms', 'outbox_status', 'attempts', 'last_error', 'available_at', 'processed_at'],
+            ['order_id', 'job_run', 'duration_ms', 'outbox_status', 'attempts', 'last_error', 'available_at', 'processed_at'],
             $rows
         );
         $this->line('HTTP retries happen inside each job execution. Queue-level retries are persisted in `outbox_messages` via status, attempts, last_error, and available_at.');
