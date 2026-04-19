@@ -7,7 +7,6 @@ use App\Models\OutboxMessage;
 use App\Services\IntegrationBenchmarkService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
-use Symfony\Component\Console\Helper\TableSeparator;
 
 class BenchmarkSyncMethodsLatency extends Command
 {
@@ -25,8 +24,8 @@ class BenchmarkSyncMethodsLatency extends Command
 
         $rows = [];
 
-        $syncOrder = $bench->createSyncOrder($label.' Sync');
         $syncStartedAt = microtime(true);
+        $syncOrder = $bench->createSyncOrder($label.' Sync');
         $syncExitCode = $this->callSilent('crm:sync-order', ['orderId' => $syncOrder->id]);
         $syncDurationMs = $bench->elapsedMs($syncStartedAt);
         $syncOrder->refresh();
@@ -36,21 +35,22 @@ class BenchmarkSyncMethodsLatency extends Command
             $syncDurationMs,
             $syncDurationMs,
             $syncOrder->synced_at ? 'yes' : 'no',
-            $syncExitCode === self::SUCCESS ? 'blocking command; source-side equals end-to-end' : 'sync command failed',
+            $syncExitCode === self::SUCCESS ? 'bloķējošs process' : 'sync command failed',
         ];
 
         $asyncStartedAt = microtime(true);
         $asyncOrder = $bench->createAsyncOrder($label.' Async');
         $asyncSourceMs = $bench->elapsedMs($asyncStartedAt);
         $asyncWait = $bench->waitForOrdersSynced([$asyncOrder->id], $timeoutMs, $pollMs);
+        $asyncEndToEndMs = $bench->elapsedMs($asyncStartedAt);
 
         $rows[] = [
             'async',
             $asyncSourceMs,
-            $asyncWait['elapsed_ms'],
+            $asyncEndToEndMs,
             $asyncWait['completed'] ? 'yes' : 'timeout',
             $asyncWait['completed']
-                ? 'requires queue worker to be running'
+                ? 'nepieciešams ieslēgst queue worker'
                 : 'queue worker may not be running, or ERP is unavailable',
         ];
 
@@ -58,14 +58,15 @@ class BenchmarkSyncMethodsLatency extends Command
         $batchOrder = $bench->createBatchOrder($label.' Batch');
         $batchSourceMs = $bench->elapsedMs($batchStartedAt);
         $batchWait = $bench->waitForOrdersSynced([$batchOrder->id], $timeoutMs, $pollMs);
+        $batchEndToEndMs = $bench->elapsedMs($batchStartedAt);
 
         $rows[] = [
             'batch',
             $batchSourceMs,
-            $batchWait['elapsed_ms'],
+            $batchEndToEndMs,
             $batchWait['completed'] ? 'yes' : 'timeout',
             $batchWait['completed']
-                ? 'includes wait for next scheduled batch run'
+                ? 'iekļauj gaidīšanu līdz nākamajam intervālam'
                 : 'scheduler may not be running, or ERP is unavailable',
         ];
 

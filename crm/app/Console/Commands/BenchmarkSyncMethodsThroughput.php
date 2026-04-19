@@ -60,7 +60,7 @@ class BenchmarkSyncMethodsThroughput extends Command
             $syncTotalMs,
             (int) round($syncTotalMs / $count),
             'yes',
-            'orders created, then sent sequentially via sync command',
+            'pasūtījumi izveidoti, tad secīgi nosūtīti, izmantojot sync komandu',
         ];
 
         $asyncStartedAt = microtime(true);
@@ -71,14 +71,15 @@ class BenchmarkSyncMethodsThroughput extends Command
         }
 
         $asyncWait = $bench->waitForOrdersSynced($asyncOrderIds, $timeoutMs, $pollMs);
+        $asyncTotalMs = $bench->elapsedMs($asyncStartedAt);
         $rows[] = [
             'async',
             $count,
-            $asyncWait['elapsed_ms'],
-            (int) round($asyncWait['elapsed_ms'] / $count),
+            $asyncTotalMs,
+            (int) round($asyncTotalMs / $count),
             $asyncWait['completed'] ? 'yes' : 'timeout',
             $asyncWait['completed']
-                ? 'requires queue worker'
+                ? 'niepieciešams ieslēgt queue worker'
                 : "synced {$asyncWait['synced_count']}/{$count}; queue worker may not be running",
         ];
 
@@ -90,14 +91,15 @@ class BenchmarkSyncMethodsThroughput extends Command
         }
 
         $batchWait = $bench->waitForOrdersSynced($batchOrderIds, $timeoutMs, $pollMs);
+        $batchTotalMs = $bench->elapsedMs($batchStartedAt);
         $rows[] = [
             'batch',
             $count,
-            $batchWait['elapsed_ms'],
-            (int) round($batchWait['elapsed_ms'] / $count),
+            $batchTotalMs,
+            (int) round($batchTotalMs / $count),
             $batchWait['completed'] ? 'yes' : 'timeout',
             $batchWait['completed']
-                ? 'requires scheduler; processed in grouped batch request'
+                ? 'apstrādāts paketes pieprasījumā'
                 : "synced {$batchWait['synced_count']}/{$count}; scheduler may not be running",
         ];
 
